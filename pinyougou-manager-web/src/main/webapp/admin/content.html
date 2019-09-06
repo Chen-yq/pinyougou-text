@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- 页面meta -->
+    <meta charset="GBK">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>广告管理</title>
+    <!-- Tell the browser to be responsive to screen width -->
+    <meta content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" name="viewport">
+    <link rel="stylesheet" href="../plugins/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../plugins/adminLTE/css/AdminLTE.css">
+    <link rel="stylesheet" href="../plugins/adminLTE/css/skins/_all-skins.min.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../plugins/jQuery/jquery-2.2.3.min.js"></script>
+    <script src="../plugins/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../js/vue.min.js"></script>
+    <script src="../js/pager.js"></script>
+
+</head>
+
+<body class="hold-transition skin-red sidebar-mini">
+<div class="box-header with-border">
+    <h3 class="box-title">广告管理</h3>
+</div>
+
+<div class="box-body">
+    <!-- 数据表格 -->
+    <div class="table-box" id="content_grid">
+        <!--工具栏-->
+        <div class="pull-left">
+            <div class="form-group form-inline">
+                <div class="btn-group">
+                    <button onclick="showModal()" type="button" class="btn btn-default" title="新建"><i class="fa fa-file-o"></i> 新建</button>
+                    <button onclick="delContent()" type="button" class="btn btn-default" title="删除"><i class="fa fa-trash-o"></i> 删除</button>
+                    <button type="button" class="btn btn-default" title="开启" onclick='confirm("你确认要开启吗？")'><i class="fa fa-check"></i> 开启</button>
+                    <button type="button" class="btn btn-default" title="屏蔽" onclick='confirm("你确认要屏蔽吗？")'><i class="fa fa-ban"></i> 屏蔽</button>
+                    <button type="button" class="btn btn-default" title="刷新" onclick="window.location.reload();"><i class="fa fa-refresh"></i> 刷新</button>
+                </div>
+            </div>
+        </div>
+        <div class="box-tools pull-right">
+            <div class="has-feedback">
+            </div>
+        </div>
+        <!--工具栏/-->
+        <!--数据列表-->
+        <table id="dataList" class="table table-bordered table-striped table-hover dataTable">
+            <thead>
+            <tr>
+                <th class="" style="padding-right:0px">
+                    <input id="selall" type="checkbox" class="icheckbox_square-blue">
+                </th>
+                <th class="sorting_asc">广告ID</th>
+                <th class="sorting">分类ID</th>
+                <th class="sorting">标题</th>
+                <th class="sorting">URL</th>
+                <th class="sorting">图片</th>
+                <th class="sorting">排序</th>
+                <th class="sorting">是否有效</th>
+                <th class="text-center">操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="entity in contentList">
+                <td><input  type="checkbox"></td>
+                <td>{{entity.tbContent.id}}</td>
+                <td>{{entity.tbContent.categoryId}}</td>
+                <td>{{entity.tbContent.title}}</td>
+                <td>{{entity.tbContent.url}}</td>
+                <td>
+                    <img alt="" :src="entity.tbContent.pic" width="100px" height="50px">
+                </td>
+                <td>{{entity.tbContent.sortOrder}}</td>
+                <td>{{entity.tbContent.status ==1 ? "有效":"无效"}}</td>
+                <td class="text-center">
+                    <a @click="updateContent(entity.tbContent.id)">修改</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="container">
+            <pagination :total="total" :current.sync="current" @pagechange="pagechange"></pagination>
+        </div>
+    </div>
+    <!-- 数据表格 /-->
+</div>
+<script type="text/template" id="template_pagination">
+    <nav>
+        <ul class="pagination">
+            <li :class="{'disabled': current == 1}"><a href="javascript:searchByPage();" @click="setCurrent(1)"> 首页 </a></li>
+            <li :class="{'disabled': current == 1}"><a href="javascript:searchByPage();" @click="setCurrent(current - 1)"> 上一页 </a></li>
+            <li >
+                <select id="tests" @change="setDisplay()">
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                </select>
+            </li>
+            <li v-for="p in grouplist" :class="{'active': current == p.val}"><a href="javascript:searchByPage();" @click="setCurrent(p.val)"> {{ p.text }} </a></li>
+            <li :class="{'disabled': current == page}"><a href="javascript:searchByPage();" @click="setCurrent(current + 1)"> 下一页</a></li>
+            <li :class="{'disabled': current == page}"><a href="javascript:searchByPage();" @click="setCurrent(page)"> 尾页 </a></li>
+        </ul>
+        <ul class="pagination pull-right">
+            <li><span> 共 {{total}}  条数据 </span></li>
+            <li><span> 每页显示 {{display}}  条数据 </span></li>
+            <li><span> 共 {{page}} 页 </span></li>
+            <li><span > 当前第 {{current}} 页 </span></li>
+            <li><span id="current"  name="current" style="display: none">{{current}}</span></li>
+            <li><span id="display"  name="display" style="display: none">{{display}}</span></li>
+        </ul>
+    </nav>
+</script>
+<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog" >
+        <div class="modal-content" id="content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <h3 id="myModalLabel">广告编辑</h3>
+            </div>
+            <div class="modal-body">
+                <table class="table table-bordered table-striped"  width="800px">
+                    <tr>
+                        <td>广告分类</td>
+                        <td>
+                            <input  type="text" style="display: none" v-model="content.id">
+                            <select name="public-choice" v-model="selected"  @change="">
+                                <option :value="type.id" v-for="type in typeList" >{{type.name}}</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>标题</td>
+                        <td><input  class="form-control" placeholder="标题" v-model="content.title" name="title">  </td>
+                    </tr>
+                    <tr>
+                        <td>URL</td>
+                        <td><input  class="form-control" placeholder="URL" v-model="content.url" name="url">  </td>
+                    </tr>
+                    <tr>
+                        <td>排序</td>
+                        <td><input  class="form-control" placeholder="排序" v-model="content.sortOrder" name="sortOrder">  </td>
+                    </tr>
+                    <tr>
+                        <td>广告图片</td>
+                        <td>
+                            <table>
+                                <tr>
+                                    <td>
+                                        <input type="file" id="file" />
+                                        <button class="btn btn-primary" type="button" >
+                                            上传
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <img  :src="content.pic" width="200px" height="100px">
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>是否有效</td>
+                        <td>
+                            <input type="checkbox" class="icheckbox_square-blue" v-model="content.status" id="checks">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" data-dismiss="modal" aria-hidden="true" onclick="addContent()">保存</button>
+                <button class="btn btn-default" data-dismiss="modal" aria-hidden="true">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</body>
+<script type="text/javascript">
+    var vm ;
+    var contentVue ;
+    $(function () {
+        searchContent();
+        contentVue = new Vue({
+            el: '#content',
+            data: {
+                typeList:"",
+                content:{
+                    id:'',
+                    categoryId:'',
+                    title:'',
+                    url:'',
+                    pic:'',
+                    status:'',
+                    sortOrder:''
+                },
+                selected:""
+            }
+        })
+        $.ajax({
+            url:'../brand/findType.do',
+            type:'post',
+            async:false,
+            data:{},
+            dataType:'json',
+            success:function(data){
+                contentVue.typeList=data;
+                contentVue.selected = contentVue.typeList[0].id;
+            }
+        })
+    })
+
+    function searchContent() {
+        $.ajax({
+            type: "post",
+            url: "../brand/findTbContentPage.do",
+            data:"",
+            dataType: "json",
+            success: function (result) {
+                vm = new Vue({
+                    el: '#content_grid',
+                    data: {
+                        contentList: result.rows,
+                        total:result.tool,
+                        current:1,
+                        display:5
+                    },
+                    methods: {
+                        pagechange: function (p) {
+                            this.current = p;// 页码改变event ， p 为新的 current
+                        }
+                    }
+                })
+            },
+            error: function () {
+                alert("系统错误，请联系管理员！");
+            }
+        })
+    }
+
+    function searchByPage(page,rows) {
+        if(page == null){
+            page = document.getElementById("current").innerHTML;
+        }
+        if(rows == null){
+            rows = document.getElementById("display").innerHTML;
+        }
+        $.ajax({
+            type: "post",
+            url: "../brand/findTbContentPage.do",
+            data:{
+                name: $("#names").val(),
+                "page":page,
+                "rows":rows
+            },
+            dataType: "json",
+            success: function (result) {
+                vm.contentCategoryList = result.rows;
+            },
+            error: function () {
+                alert("系统错误，请联系管理员！");
+            }
+        })
+    }
+
+
+    function search() {
+        $.ajax({
+            type: "post",
+            url: "../brand/findTbContentPage.do",
+            data:{
+                name: $("#names").val()
+            },
+            dataType: "json",
+            success: function (result) {
+                vm.contentCategoryList = result.rows;
+            },
+            error: function () {
+                alert("系统错误，请联系管理员！");
+            }
+        })
+    }
+
+    function updateContent(id){
+        $.ajax({
+            url:'../brand/findContentOne.do',
+            type:'post',
+            data:{id:id},
+            dataType:'json',
+            success:function(data) {
+                for(var i =0;i< contentVue.typeList.length;i++){
+                    if(contentVue.typeList[i].id == data.content.categoryId){
+                        contentVue.selected = contentVue.typeList[i].id;
+                    }
+                }
+                contentVue.content = data.content;
+                contentVue.contentType = data.contentType;
+            }
+        })
+        $('#editModal').modal("show");
+    }
+
+    function showModal() {
+        $('#editModal').modal("show");
+    }
+
+    function addContent() {
+        contentVue.content.categoryId = contentVue.selected;
+        contentVue.content.status = 1;
+        $.ajax({
+            url:'../brand/addContent.do',
+            type:'post',
+            data:contentVue.content,
+            dataType:'json',
+            success:function(data){
+                if(data){
+                    contentVue.content = '';
+                    location.reload();
+                }else{
+                    alert("编辑失败")
+                }
+            }
+        })
+    }
+
+    function delContent() {
+        var tbodyObj = document.getElementById('dataList');
+        var id =[];
+        $("table :checkbox").each(function(key,value){
+            if($(value).prop('checked')){
+                id.push(tbodyObj.rows[key].cells[1].innerHTML);
+            }
+        })
+        $.ajax({
+            type: "POST",
+            dataType:"json",
+            url: "../brand/removeContent.do",
+            traditional:true,
+            data: {
+                ids: id
+            },
+            success: function (data) {
+                if (data) {
+                    alert("恭喜您成功删除选中的广告")
+                    location.reload();
+                } else {
+                    alert("删除失败，请重新操作!")
+                    location.reload();
+                }
+            }
+        });
+    }
+</script>
+</html>
